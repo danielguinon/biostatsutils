@@ -9,14 +9,6 @@
 #' @importFrom stats as.formula drop1 lm
 #' @importFrom lme4 lmer VarCorr
 #' @importFrom hwriter openPage hwrite closePage
-#' @export
-
-#################################################################################################################
-#################################################################################################################
-### assoc.pc.R
-#################################################################################################################
-#################################################################################################################
-
 
 assoc.vars <- function(d,  pd, nv, fn, vadd=NULL)
 {
@@ -74,6 +66,7 @@ assoc.vars <- function(d,  pd, nv, fn, vadd=NULL)
   invisible(NULL)
 }
 
+#' @export
 assoc.pc <- function(pc, pd, nv, rdir, nlab=NULL, show.labs=F, vadd=NULL, npc=9)
 {
   require("hwriter");
