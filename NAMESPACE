@@ -3,6 +3,7 @@
 export(assoc.pc)
 export(make.contrasts)
 export(sortDragHtmlTable)
+export(write.html.acm)
 export(write.html.mod)
 importFrom(grDevices,col2rgb)
 importFrom(grDevices,dev.off)
