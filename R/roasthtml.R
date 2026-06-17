@@ -3,7 +3,7 @@
 #' Evaluates multiple collections of gene sets across multiple contrasts using
 #' parallelized ROAST operations, generating structured downstream HTML summaries.
 #'
-#' @param x A list of lists containing `roastgsa` results objects structured by contrast and gene set collection.
+#' @param x A list of lists containing \code{roastgsa} results objects structured by contrast and gene set collection.
 #' @param y A list of data.frames containing Differential Expression (DE) metrics structured by contrast.
 #' @param mat A numeric matrix of normalized gene expression values.
 #' @param mc.cores.x Integer. Number of cores for processing contrasts. Default 1.
@@ -16,305 +16,355 @@
 #' @param intvar Character. Name of the primary design variable of interest. Default NULL.
 #' @param mycol Vector of color definitions for heatmap generation.
 #'
+#' @importFrom parallel mclapply
 #' @export
-roastHtmlTables <- function(x,y,mat,mc.cores.x=1,mc.cores.y=1,outdir='./',maxgs=50,indhtml=TRUE,DEdir=NULL,returnData=TRUE, intvar=NULL, mycol=mycol)
-{
-  # check names x == names y
-  # check DEdir exists
-  ans <- mclapply(names(x[[1]]),function(gs) ## Genesets
-  {
-    ans <- mclapply(names(y), function(i) ## Contrasts
-    {
+roastHtmlTables <- function(x, y, mat, mc.cores.x=1, mc.cores.y=1, outdir='./',
+                            maxgs=50, indhtml=TRUE, DEdir=NULL, returnData=TRUE,
+                            intvar=NULL, mycol=NULL) {
+  # Defensive checks
+  if (is.null(mycol)) stop("A color palette 'mycol' must be provided.")
+  if (!dir.exists(outdir)) dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
+
+  # Fetch JavaScript utilities bundled within phenoTest safely
+  sorttable_src <- system.file("javascript", "sorttable.js", package = "phenoTest")
+  dragtable_src <- system.file("javascript", "dragtable.js", package = "phenoTest")
+
+  if (sorttable_src == "" || dragtable_src == "") {
+    warning("JavaScript utility assets could not be located via system.file. Falling back to empty strings.")
+    sorttable_code <- ""
+    dragtable_code <- ""
+  } else {
+    sorttable_code <- readLines(sorttable_src, warn = FALSE)
+    dragtable_code <- readLines(dragtable_src, warn = FALSE)
+  }
+
+  ans <- mclapply(names(x[[1]]), function(gs) { ## Genesets
+    mclapply(names(y), function(i) { ## Contrasts
       mygs <- x[[i]][[gs]]
-      ans <- roastHtmlTable(mygs,gs,i,sprintf('roastGSA_MaxMean_%s_%s.html',gs,i),file.path(outdir,sprintf('roastGSA/html/%s/',gs)), indhtml=indhtml,DEdir=DEdir,detable=y[[i]],maxgs=maxgs, mat=mat, intvar=intvar, selcols=colnames(y[[i]]), vorder=colnames(y[[i]])[ncol(y[[i]])], mycol=mycol)
-      ans
-    },mc.cores=mc.cores.x)
-  },mc.cores=mc.cores.y)
+
+      # Define deterministic, isolated directory paths for this geneset loop
+      geneset_dir <- file.path(outdir, "roastGSA", "html", gs)
+      filename_html <- sprintf('roastGSA_MaxMean_%s_%s.html', gs, i)
+
+      roastHtmlTable(
+        mygs = mygs, gs = gs, i = i,
+        filename = filename_html, dirname = geneset_dir,
+        indhtml = indhtml, DEdir = DEdir, detable = y[[i]],
+        maxgs = maxgs, mat = mat, intvar = intvar,
+        selcols = colnames(y[[i]]), vorder = colnames(y[[i]])[ncol(y[[i]])],
+        mycol = mycol, outdir = outdir,
+        sorttable = sorttable_code, dragtable = dragtable_code
+      )
+    }, mc.cores = mc.cores.x)
+  }, mc.cores = mc.cores.y)
+
   if (returnData) return(ans)
 }
 
-#' Construct a Single Gene Set Collection Level HTML Overview
+
+#' Generate HTML Report Table for a Specific Gene Set and Contrast
 #'
-#' Filters gene set statistics using significance thresholds, orchestrates diagnostic
-#' image plotting, and calls high-level HTML assembly functions.
+#' Filters gene set analysis results based on significance controls, builds underlying
+#' image assets, and generates a structured summary web page directory tracking background signals.
 #'
-#' @param mygs A discrete `roastgsa` collection output list containing `$res` and `$index`.
-#' @param gs Character. Target name/identifier of the gene set collection.
-#' @param i Character. Target name/identifier of the contrast.
-#' @param filename Character. Target HTML filename output.
-#' @param dirname Character. Core target path where files will be compiled.
-#' @param indhtml Logical. If TRUE, creates individual nested child HTML sheets for genes.
-#' @param DEdir Character. Source directory path containing static figures. Default NULL.
-#' @param detable A data.frame containing DE table metrics for contrast `i`. Default NULL.
-#' @param maxgs Integer. Maximum number of paths to include after filtering. Default 50.
-#' @param verbose Logical. If TRUE, logs generation progress to the console. Default TRUE.
-#' @param mat A numeric matrix of normalized gene expression values.
-#' @param intvar Character. Design variable of interest. Default NULL.
-#' @param selcols Character vector. Explicit columns to keep from `detable`.
-#' @param vorder Character. Column name to use for descending absolute sorting.
-#' @param apval.cut Numeric. Significance threshold value for FDR adjustment filtering. Default 0.05.
-#' @param mycol Vector of color definitions for heatmap generation.
+#' @param mygs A specific \code{roastgsa} results object.
+#' @param gs Character. The name or identifier of the gene set collection.
+#' @param i Character. The name or identifier of the contrast group.
+#' @param filename Character. Target file name string for the output layout page.
+#' @param dirname Character. Directory path destination tracking framework components.
+#' @param indhtml Logical. If TRUE, generates nested child pages for local gene expressions.
+#' @param DEdir Character. Optional source path containing auxiliary diagnostic illustrations. Default NULL.
+#' @param detable A data.frame containing differential expression parameters for subsetting workflows. Default NULL.
+#' @param maxgs Integer. Maximum threshold cutoff for tracking high-scoring gene expressions. Default 50.
+#' @param verbose Logical. If TRUE, messages execution metrics out to console. Default TRUE.
+#' @param mat A numeric matrix of expression value counts.
+#' @param intvar Character. Primary experimental variable context tracking group metadata. Default NULL.
+#' @param selcols Vector of string characters matching explicit column subsets to extract.
+#' @param vorder Character. Destination column sorting sequence assignment identifier.
+#' @param apval.cut Numeric. Adjusted p-value threshold for considering paths significant. Default 0.05.
+#' @param mycol Vector of color definitions for standard mapping layouts. Default NULL.
+#' @param outdir Character. Base directory tracking root structural framework components. Default './'.
+#' @param sorttable Character string containing raw JavaScript file code logic for sortable structures. Default "".
+#' @param dragtable Character string containing raw JavaScript file code logic for draggable tables. Default "".
 #'
 #' @export
-roastHtmlTable <- function(mygs,gs,i,filename,dirname,indhtml,DEdir=NULL,detable=NULL,maxgs=50,verbose=TRUE, mat, intvar=NULL, selcols, vorder, apval.cut=0.05, mycol=mycol)
-{
-  if (indhtml & is.null(detable)) stop('indhtml is TRUE but not DE table provided')
-  ## Filter for significance, if more than maxgs, maxgs
-  mygs$res <- mygs$res[order(abs(mygs$res$nes),decreasing=TRUE),]
+roastHtmlTable <- function(mygs, gs, i, filename, dirname, indhtml, DEdir=NULL,
+                           detable=NULL, maxgs=50, verbose=TRUE, mat, intvar=NULL,
+                           selcols, vorder, apval.cut=0.05, mycol=NULL, outdir='./',
+                           sorttable="", dragtable="") {
+
+  if (indhtml && is.null(detable)) stop('indhtml is TRUE but no DE table provided')
+
+  ## Filter for significance; if less than 10 pass, grab top 10 rows
+  mygs$res <- mygs$res[order(abs(mygs$res$nes), decreasing = TRUE), ]
   sel <- mygs$res$adj.pval < apval.cut
-  if(sum(sel) < 10){
-    mmax <- min(10,nrow(mygs$res))
+  if (sum(sel) < 10) {
+    mmax <- min(10, nrow(mygs$res))
     sel <- 1:mmax
   }
   mygs$res <- mygs$res[sel, ]
-  mygs$res <- mygs$res[1:min(nrow(mygs$res),maxgs),]
+  mygs$res <- mygs$res[1:min(nrow(mygs$res), maxgs), ]
   mygs$index <- mygs$index[rownames(mygs$res)]
-  if (verbose) print(sprintf('Writing output for %s in %s (%d selected genesets)',gs,i,nrow(mygs$res)))
-  ## Write down main pathway table file
-  if (indhtml) geneDEhtmlfiles <- sprintf('%s_indhtml/%s_genes.html',i,rownames(mygs$res)) else geneDEhtmlfiles <- NULL
-  ##dir.create(file.path(dirname,sprintf('roastGSA/html/%s',gs)),recursive=TRUE)
-  dir.create(dirname,recursive=TRUE)
-  htmlrgsa2(mygs,htmlname=sprintf('roastGSA_MaxMean_%s_%s.html',gs,i),htmlpath=file.path(tablesdir,sprintf('roastGSA/html/%s/',gs)),
-            plotpath=sprintf('%s_images/',i),indheatmap=FALSE,y=mat,intvar=intvar,ploteffsize=FALSE,mycol=mycol,
-            geneDEhtmlfiles=geneDEhtmlfiles,sorttable=sorttable,dragtable=dragtable,whplot=rownames(mygs$res)[1:nrow(mygs$res)],
-            title=sprintf('<center><h4>%s | %s</h4></center>',gs,i))
-  if (indhtml) roastHtmlDETable(mygs,gs,i,detable,DEdir,filename,dirname,maxgs,verbose, selcols=selcols, vorder=vorder)
+
+  if (verbose) {
+    message(sprintf('Writing output for %s in %s (%d selected genesets)', gs, i, nrow(mygs$res)))
+  }
+
+  if (!dir.exists(dirname)) dir.create(dirname, recursive = TRUE, showWarnings = FALSE)
+
+  if (indhtml) {
+    geneDEhtmlfiles <- sprintf('%s_indhtml/%s_genes.html', i, rownames(mygs$res))
+  } else {
+    geneDEhtmlfiles <- NULL
+  }
+
+  html_target_path <- file.path(outdir, "roastGSA", "html", gs, "/")
+
+  htmlrgsa2(
+    obj = mygs, htmlpath = html_target_path, htmlname = filename,
+    plotpath = sprintf('%s_images/', i), indheatmap = FALSE, y = mat,
+    intvar = intvar, ploteffsize = FALSE, mycol = mycol,
+    geneDEhtmlfiles = geneDEhtmlfiles, sorttable = sorttable, dragtable = dragtable,
+    whplot = rownames(mygs$res),
+    title = sprintf('<center><h4>%s | %s</h4></center>', gs, i)
+  )
+
+  if (indhtml) {
+    roastHtmlDETable(
+      mygs = mygs, gs = gs, i = i, detable = detable, DEdir = DEdir,
+      filename = filename, dirname = dirname, maxgs = maxgs,
+      verbose = verbose, selcols = selcols, vorder = vorder
+    )
+  }
 }
 
-#' Create Individual Gene-Level DE Detail HTML Sheets
+
+#' Export Nested Differential Expression Target Layout Sub-tables
 #'
-#' Extracts matching genes for a specific pathway, rounds numeric metrics, sets up
-#' JavaScript sorting/dragging wrappers, and compiles individual child HTML sheets.
+#' Evaluates specific matching features between target gene set lists and dynamic sequence structures,
+#' writing localized independent HTML tracking sheets mapping data frames into interactive sortable models.
 #'
-#' @param mygs A discrete `roastgsa` collection output list.
-#' @param gs Character. Name of the gene set collection.
-#' @param i Character. Name of the contrast.
-#' @param detable A data.frame containing DE table metrics for contrast `i`.
-#' @param DEdir Character. Path to base directory containing stripcharts.
-#' @param filename Character. Main index filename string.
-#' @param dirname Character. Core directory path where nested files will be created.
-#' @param maxgs Integer. Maximum number of paths to process. Default 50.
-#' @param verbose Logical. If TRUE, logs internal loop progress. Default TRUE.
-#' @param selcols Character vector. Explicit columns to subset from `detable`.
-#' @param vorder Character. Numeric column name to sort gene rows by.
+#' @param mygs A specific \code{roastgsa} results structure object.
+#' @param gs Character. The target name context matching background collections.
+#' @param i Character. The specific contrast assignment tracker.
+#' @param detable A data.frame mapping baseline differential parameters.
+#' @param DEdir Character. Input file storage directory referencing static plots.
+#' @param filename Character. Output name specification tracking target templates.
+#' @param dirname Character. Container folder path destination mapping components.
+#' @param maxgs Integer. Maximum scale tracking threshold. Default 50.
+#' @param verbose Logical. Enables output standard messages. Default TRUE.
+#' @param selcols Vector of characters filtering acceptable column outputs.
+#' @param vorder Character string declaring variable order hierarchy sequence targeting.
 #'
+#' @importFrom hwriter hwrite openPage closePage
 #' @export
-roastHtmlDETable <- function(mygs,gs,i,detable,DEdir,filename,dirname,maxgs=50,verbose=TRUE, selcols, vorder)
-{
-  outdir <- file.path(dirname,sprintf('%s_indhtml',i))
-  dir.create(outdir,recursive=TRUE)
+roastHtmlDETable <- function(mygs, gs, i, detable, DEdir, filename, dirname,
+                             maxgs=50, verbose=TRUE, selcols, vorder) {
+
+  if (!"symbol" %in% colnames(detable)) {
+    stop("The provided differential expression table 'detable' is missing a 'symbol' column.")
+  }
+
+  outdir <- file.path(dirname, sprintf('%s_indhtml', i))
+  if (!dir.exists(outdir)) dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
+
   st <- system.file("javascript", "sorttable.js", package = "phenoTest")
   dt <- system.file("javascript", "dragtable.js", package = "phenoTest")
-  system(sprintf('cp %s %s/sorttable.js',st,outdir))
-  system(sprintf('cp %s %s/dragtable.js',dt,outdir))
-  for (j in names(mygs$index))
-  {
-    if ((nrow(mygs$res))>0)
-    {
-      intgenes <- intersect(as.character(detable$symbol),as.character(mygs$index[[j]]))
-      ##idx1 <- unlist(lapply(strsplit(i,'_vs_'),function(x) x[1]))
-      ##idx2 <- unlist(lapply(strsplit(i,'_vs_'),function(x) x[2]))
-      xout <- detable[detable$symbol %in% intgenes,]
-      ##idx1 <- colnames(xout)[grep(idx1,colnames(xout))] # Query
-      ##idx2 <- colnames(xout)[grep(idx2,colnames(xout))] # Control
-      normcols <- colnames(xout)[grep('normCounts',colnames(xout))]
-      #                        selcols <- c('symbol','names','space','start','end','width','strand',normcols,'baseMean','log2FoldChange','stat','pvalue','padj','rej')
-      xout <- xout[,selcols]
-      xout <- xout[order(abs(xout[,vorder]),decreasing=TRUE),]
-      isnum <- which(sapply(xout,is.numeric))
-      for (coln in isnum) xout[,coln] <- round(xout[,coln],3)
+
+  if (st != "") file.copy(st, file.path(outdir, 'sorttable.js'), overwrite = TRUE)
+  if (dt != "") file.copy(dt, file.path(outdir, 'dragtable.js'), overwrite = TRUE)
+
+  for (j in names(mygs$index)) {
+    if ((nrow(mygs$res)) > 0) {
+      intgenes <- intersect(as.character(detable$symbol), as.character(mygs$index[[j]]))
+      xout <- detable[detable$symbol %in% intgenes, ]
+
+      existing_cols <- intersect(selcols, colnames(xout))
+      xout <- xout[, existing_cols, drop = FALSE]
+
+      if (vorder %in% colnames(xout)) {
+        xout <- xout[order(abs(xout[, vorder]), decreasing = TRUE), ]
+      }
+
+      isnum <- which(sapply(xout, is.numeric))
+      for (coln in isnum) xout[, coln] <- round(xout[, coln], 3)
       xout[is.na(xout)] <- 'NA'
-      ##print(colnames(xout))
-      imgsrc <- sprintf('../../../../../../%s/figs/stripcharts/%s.png',basename(DEdir),make.names(xout$names))
-      ##xout$Plot <- sprintf('<a href="%s"><img src="%s" height=150 width=150></img></a>',imgsrc,imgsrc)
-      ##xout$entrez <- sprintf('<a href="https://www.ncbi.nlm.nih.gov/gene/?term=%s">%s</a>',xout$entrez,xout$entrez)
-      xout$symbol <- sprintf('<a href="http://www.informatics.jax.org/quicksearch/summary?queryType=exactPhrase&query=%s&submit=Quick+Search">%s</a>',xout$symbol,xout$symbol)
-      fout <- file.path(outdir, sprintf('%s_genes.html',j))
-      title <- sprintf('<center><h4>%s | %s: Genes in pathway %s\n Differential expression results</h4></center></p>',gs,i,j)
-      p <- openPage(basename(fout),dirname(fout),title=title,link.javascript=c('sorttable.js','dragtable.js'),link.css='../../../../../../biostats.css')
-      pp <- hwrite(title,i)
-      pp <- paste(pp,hwrite(xout,table.class=list('sortable draggable'),table.align='center',row.names=FALSE),sep='\n')
-      hwrite(pp,p)
+
+      xout$symbol <- sprintf('<a href="http://www.informatics.jax.org/quicksearch/summary?queryType=exactPhrase&query=%s&submit=Quick+Search">%s</a>', xout$symbol, xout$symbol)
+
+      fout <- file.path(outdir, sprintf('%s_genes.html', j))
+      title <- sprintf('<center><h4>%s | %s: Genes in pathway %s\n Differential expression results</h4></center></p>', gs, i, j)
+
+      p <- openPage(basename(fout), dirname(fout), title = title,
+                    link.javascript = c('sorttable.js', 'dragtable.js'),
+                    link.css = '../../../../../../biostats.css')
+      pp <- hwrite(title, i)
+      pp <- paste(pp, hwrite(xout, table.class = list('sortable draggable'), table.align = 'center', row.names = FALSE), sep = '\n')
+      hwrite(pp, p)
       closePage(p)
     }
   }
 }
 
-#' Core HTML Assembler and Dynamic Table Generation Wrapper
-#'
-#' Writes dynamic table elements, formats embedded hyperlinks/images, and
-#' outputs unified files utilizing internal `hwriter` constructs.
-#'
-#' @param x A structured data.frame to print.
-#' @param file Character. Full path configuration target for file generation.
-#' @param links A structured list containing column-matched URL targets.
-#' @param tiny.pic A structured list containing column-matched graphic paths.
-#' @param sorttable Character string containing contents of `sorttable.js`.
-#' @param dragtable Character string containing contents of `dragtable.js`.
-#' @param css Character. Relative path configuration target for CSS files.
-#' @param title Character. Text element to serve as the document title.
-#'
-#' @export
-write.html.mod2 <- function(x, file = paste0(htmlpath, htmlname), links = links,
-                            tiny.pic = plots, sorttable = sorttable,
-                            dragtable = dragtable,css='../../../../../biostats.css',title=title)
-{
-  ## Apply links and plots
-  sel.links <- which(!sapply(links,is.null))
-  sel.plots <- which(!sapply(tiny.pic,is.null))
-  ans <- x
-  for (j in sel.links) ans[,j] <- sprintf('<a href="%s">%s</a>',links[[j]],ans[,j])
-  for (j in sel.plots) ans[,j] <- sprintf('<a href="%s"><img src="%s" height="100"></a>',tiny.pic[[j]],tiny.pic[[j]])
-  ##ans
-  ## Write .js files
-  writeLines(sorttable,file.path(dirname(file),'sorttable.js'))
-  writeLines(dragtable,file.path(dirname(file),'dragtable.js'))
-  ## Write main output table
-  p <- openPage(basename(file),dirname(file),link.javascript=c('sorttable.js','dragtable.js'),link.css='../../../../../biostats.css')
-  pp <- hwrite(title)
-  pp <- paste(pp,hwrite(ans,table.class=list('sortable draggable'),table.align='center',row.names=FALSE),sep='\n')
-  hwrite(pp,p)
-  closePage(p)
-}
 
-#' Low-Level ROAST Plot Engine and Property Structuring Adapter
+#' Generate Global Enrichment Tables and Structural Diagnostic Layout Graphics
 #'
-#' Generates functional PNG diagrams (GSEA, Stats, Heatmaps) from `roastgsa` data structures,
-#' configures directory trees, and maps relational plotting variables to `write.html.mod2`.
+#' Processes statistical records across designated parameters to generate structural png
+#' matrix diagnostics and wraps summary matrix metadata maps into primary target pages.
 #'
-#' @param obj An object of class `roastgsa`.
-#' @param htmlpath Character. Core output path where table indices will live.
-#' @param htmlname Character. Main target sheet filename string.
-#' @param plotpath Character. Relative path directory snippet where generated PNG files are exported.
-#' @param plotstats Logical. If TRUE, renders distribution stats diagrams. Default TRUE.
-#' @param plotgsea Logical. If TRUE, renders cumulative GSEA running sums. Default TRUE.
-#' @param indheatmap Logical. If TRUE, renders expression matrix heatmaps. Default TRUE.
-#' @param ploteffsize Logical. If TRUE, renders effect size metrics signature charts. Default TRUE.
-#' @param links_plots A list containing explicit, override filepaths/URLs for generated plots.
-#' @param y A numeric matrix of normalized gene expression values.
-#' @param whplots Character vector. Explicit subset of pathway IDs to generate plots for.
-#' @param geneDEhtmlfiles Character vector. Paths to matching child sheets created by `roastHtmlDETable`.
-#' @param title Character. Text or HTML markup string to serve as header banner title.
-#' @param margins Numeric vector of length 2. Axis margin controls for traditional heatmap rendering. Default c(15, 12).
-#' @param sizesHeatmap Numeric vector of length 2. Canvas dimensions (Height, Width) for heatmap PNG exports. Default c(1200, 800).
-#' @param typeheatmap Character vector. Target layout framework option string ("heatmap.2" vs "ggplot2").
-#' @param intvar Character. Metadata factor tracking biological variable of interest.
-#' @param adj.var Character. Design factor metadata variations to adjust for. Default NULL.
-#' @param mycol Vector of color spectrum palettes for visual plotting elements.
-#' @param varrot Numeric vector or matrix representing rotatable model variation coordinates.
-#' @param psel Numeric vector. Extracted feature row pointer configurations. Default NULL.
-#' @param sorttable Character string containing contents of `sorttable.js`.
-#' @param dragtable Character string containing contents of `dragtable.js`.
-#' @param ... Optional arguments passed down to downstream low-level plotting functions.
+#' @param obj A valid \code{roastgsa} container metrics object.
+#' @param htmlpath Character. Core framework folder directory target path. Default "".
+#' @param htmlname Character. Main target document layout filename. Default "file.html".
+#' @param plotpath Character. Local child relative folder directory targeting internal visuals. Default "".
+#' @param plotstats Logical. Controls running diagnostic visual statistics generation loops. Default TRUE.
+#' @param plotgsea Logical. Controls execution pathways mapping baseline GSEA profiles. Default TRUE.
+#' @param indheatmap Logical. Renders distinct matrix heat maps tracking active target expressions. Default TRUE.
+#' @param ploteffsize Logical. Evaluates profile size effects signatures. Default TRUE.
+#' @param links_plots A structured list parsing unique relative paths matching downstream plot destinations.
+#' @param y Expression counts target numerical background matrix.
+#' @param whplot Target array matching identifiers across gene set indexes to render manually. Default NULL.
+#' @param geneDEhtmlfiles Character mapping array pointing cleanly to lower-level nested child page frames. Default NULL.
+#' @param title Character layout header text string mapping raw web content templates. Default "".
+#' @param margins Numeric vector tracking visual boundaries formatting parameters. Default c(15, 12).
+#' @param sizesHeatmap Numeric vector parsing layout dimension specifications. Default c(1200, 800).
+#' @param typeheatmap Character vector detailing preferred baseline engine types. Default c("heatmap.2", "ggplot2").
+#' @param intvar Character parameter context specifying active experimental design tracking parameters.
+#' @param adj.var Supplementary metadata tracking adjustments covariates matrix. Default NULL.
+#' @param mycol Vector palette configuring structural map visualization themes.
+#' @param varrot Numeric signature parameter targeting profile metrics calculations. Optional.
+#' @param psel Supplementary significance parameter maps selector. Default NULL.
+#' @param sorttable String containing base Javascript utility logic. Default "".
+#' @param dragtable String containing baseline Javascript interactivity logic. Default "".
+#' @param ... Additional argument options passed securely to downstream graphics functions.
 #'
+#' @importFrom grDevices png dev.off
 #' @export
 htmlrgsa2 <- function (obj, htmlpath = "", htmlname = "file.html", plotpath = "",
                        plotstats = TRUE, plotgsea = TRUE, indheatmap = TRUE, ploteffsize = TRUE,
-                       links_plots = list(stats = NULL, gsea = NULL, heatmap = NULL,
-                                          effsize = NULL), y, whplots = NULL, geneDEhtmlfiles = NULL,
-                       title = "", margins = c(15, 12), sizesHeatmap = c(1200, 800),
-                       typeheatmap = c("heatmap.2", "ggplot2"), intvar, adj.var = NULL,
-                       mycol, varrot, psel = NULL, sorttable, dragtable, ...)
+                       links_plots = list(stats = NULL, gsea = NULL, heatmap = NULL, effsize = NULL),
+                       y, whplot = NULL, geneDEhtmlfiles = NULL, title = "", margins = c(15, 12),
+                       sizesHeatmap = c(1200, 800), typeheatmap = c("heatmap.2", "ggplot2"),
+                       intvar, adj.var = NULL, mycol, varrot, psel = NULL,
+                       sorttable = "", dragtable = "", ...)
 {
   if (!inherits(obj, "roastgsa"))
     stop("not a roastgsa object")
-  if (ploteffsize)
-    if (missing(varrot))
-      stop("varrot is missing")
+  if (ploteffsize && missing(varrot))
+    stop("varrot is missing and required when ploteffsize is TRUE")
+
   x <- data.frame(geneset = rownames(obj$res), obj$res)
   index <- obj$index[rownames(x)]
   psel2 <- psel
+
   if (plotstats | plotgsea | indheatmap) {
-    dir.create(paste0(htmlpath, plotpath))
-    if (is.null(whplots))
-      whplots <- names(index)
-    if (!is.na(whplots[1])) {
+    dir.create(paste0(htmlpath, plotpath), recursive = TRUE, showWarnings = FALSE)
+    if (is.null(whplot))
+      whplot <- names(index)
+
+    if (!is.na(whplot[1])) {
       stats <- sort(obj$stats)
-      index <- sapply(obj$index, function(x) which(names(stats) %in%
-                                                     x))
-      for (k in whplots) {
+      index <- sapply(obj$index, function(z) which(names(stats) %in% z))
+
+      for (k in whplot) {
+        clean_k <- gsub("[[:punct:]]", " ", k)
+
         if (plotstats) {
-          png(paste0(htmlpath, plotpath, gsub("[[:punct:]]",
-                                              " ", k), "_stats.png"))
+          png(paste0(htmlpath, plotpath, clean_k, "_stats.png"))
           plotStats(obj, whplot = k, ...)
           dev.off()
         }
         if (plotgsea) {
-          png(paste0(htmlpath, plotpath, gsub("[[:punct:]]",
-                                              " ", k), "_gsea.png"))
+          png(paste0(htmlpath, plotpath, clean_k, "_gsea.png"))
           plotGSEA(obj, whplot = k, ...)
           dev.off()
         }
         if (indheatmap) {
-          png(paste0(htmlpath, plotpath, gsub("[[:punct:]]",
-                                              " ", k), "_heatmap.png"), width = sizesHeatmap[2],
-              height = sizesHeatmap[1])
-          if (typeheatmap[1] == "ggplot2")
-            heatmaprgsa_hm(obj, y, whplot = k, mycol = mycol,
-                           intvar = intvar, adj.var = adj.var, psel = psel2,
-                           ...)
-          else heatmaprgsa_hm(obj, y, whplot = k, mycol = mycol,
-                              intvar = intvar, adj.var = adj.var, psel = psel2,
-                              ...)
+          png(paste0(htmlpath, plotpath, clean_k, "_heatmap.png"),
+              width = sizesHeatmap[2], height = sizesHeatmap[1])
+          heatmaprgsa_hm(obj, y, whplot = k, mycol = mycol,
+                         intvar = intvar, adj.var = adj.var, psel = psel2, ...)
           dev.off()
         }
         if (ploteffsize) {
-          png(paste0(htmlpath, plotpath, gsub("[[:punct:]]",
-                                              " ", k), "_effsize.png"))
+          png(paste0(htmlpath, plotpath, clean_k, "_effsize.png"))
           ploteffsignaturesize(obj, varrot, whplot = k)
           dev.off()
         }
       }
     }
   }
+
   if (!is.null(geneDEhtmlfiles))
     x$geneDEinfo <- rep("view", dim(x)[1])
-  if (plotstats)
-    x$plot_stats <- NA
-  if (plotgsea)
-    x$plot_gsea <- NA
-  if (indheatmap)
-    x$heatmap <- NA
-  if (ploteffsize)
-    x$plot_effsize <- NA
+  if (plotstats)  x$plot_stats <- NA
+  if (plotgsea)   x$plot_gsea <- NA
+  if (indheatmap) x$heatmap <- NA
+  if (ploteffsize) x$plot_effsize <- NA
+
   links <- vector("list", length = ncol(x))
   names(links) <- colnames(x)
   plots <- links
-  if (!is.null(links_plots$stats))
-    links$plot_stats <- plots$plot_stats <- links_plots$stats
-  else {
-    if (plotstats)
-      links$plot_stats <- plots$plot_stats <- paste0(plotpath,
-                                                     gsub("[[:punct:]]", " ", rownames(x)), "_stats.png")
-  }
-  if (!is.null(links_plots$gsea))
-    links$plot_gsea <- plots$plot_gsea <- links_plots$gsea
-  else {
-    if (plotgsea)
-      links$plot_gsea <- plots$plot_gsea <- paste0(plotpath,
-                                                   gsub("[[:punct:]]", " ", rownames(x)), "_gsea.png")
-  }
-  if (!is.null(links_plots$heatmap))
-    links$heatmap <- plots$heatmap <- links_plots$heatmap
-  else {
-    if (indheatmap)
-      links$heatmap <- plots$heatmap <- paste0(plotpath,
-                                               gsub("[[:punct:]]", " ", rownames(x)), "_heatmap.png")
-  }
-  if (!is.null(links_plots$heatmap))
-    links$effsize <- plots$effsize <- links_plots$effsize
-  else {
-    if (ploteffsize)
-      links$plot_effsize <- plots$plot_effsize <- paste0(plotpath,
-                                                         gsub("[[:punct:]]", " ", rownames(x)), "_effsize.png")
-  }
+
+  clean_rownames <- gsub("[[:punct:]]", " ", rownames(x))
+
+  if (!is.null(links_plots$stats)) links$plot_stats <- plots$plot_stats <- links_plots$stats
+  else if (plotstats) links$plot_stats <- plots$plot_stats <- paste0(plotpath, clean_rownames, "_stats.png")
+
+  if (!is.null(links_plots$gsea)) links$plot_gsea <- plots$plot_gsea <- links_plots$gsea
+  else if (plotgsea) links$plot_gsea <- plots$plot_gsea <- paste0(plotpath, clean_rownames, "_gsea.png")
+
+  if (!is.null(links_plots$heatmap)) links$heatmap <- plots$heatmap <- links_plots$heatmap
+  else if (indheatmap) links$heatmap <- plots$heatmap <- paste0(plotpath, clean_rownames, "_heatmap.png")
+
+  if (!is.null(links_plots$effsize)) links$effsize <- plots$effsize <- links_plots$effsize
+  else if (ploteffsize) links$plot_effsize <- plots$plot_effsize <- paste0(plotpath, clean_rownames, "_effsize.png")
+
   if (!is.null(geneDEhtmlfiles)) {
     links$geneDEinfo <- rep(NA, dim(x)[1])
     links$geneDEinfo[1:length(geneDEhtmlfiles)] <- geneDEhtmlfiles
   }
+
   write.html.mod2(x, file = paste0(htmlpath, htmlname), links = links,
                   tiny.pic = plots, title = title, sorttable = sorttable,
                   dragtable = dragtable, ...)
 }
 
-## The End...
+
+#' Write Structured Web Documentation Files onto Persistent Target Disk Spaces
+#'
+#' Merges string lists mapping anchor tags and thumbnail targets directly into data frames,
+#' writing target configurations alongside local dependencies onto persistent file assets.
+#'
+#' @param x A structured data.frame containing metadata layout results tracking values.
+#' @param file Character. Clean absolute target file path to compile toward. Default "file.html".
+#' @param links List parsing functional string formatting directives targeting anchor parameters. Default list().
+#' @param tiny.pic List mapping target layout parameters defining visual image destinations. Default list().
+#' @param sorttable String sequence detailing sorting utilities logic scripts. Default "".
+#' @param dragtable String sequence tracking dragging utilities engine parameters. Default "".
+#' @param css Character string declaring stylesheet layout configurations. Default '../../../../../biostats.css'.
+#' @param title Character string header title injected onto page setups. Default "".
+#'
+#' @importFrom hwriter hwrite openPage closePage
+#' @export
+write.html.mod2 <- function(x, file = "file.html", links = list(),
+                            tiny.pic = list(), sorttable = "",
+                            dragtable = "", css = '../../../../../biostats.css', title = "")
+{
+  sel.links <- which(!sapply(links, is.null))
+  sel.plots <- which(!sapply(tiny.pic, is.null))
+  ans <- x
+
+  for (j in sel.links) ans[,j] <- sprintf('<a href="%s">%s</a>', links[[j]], ans[,j])
+  for (j in sel.plots) ans[,j] <- sprintf('<a href="%s"><img src="%s" height="100"></a>', tiny.pic[[j]], tiny.pic[[j]])
+
+  if (!dir.exists(dirname(file))) dir.create(dirname(file), recursive = TRUE, showWarnings = FALSE)
+
+  writeLines(sorttable, file.path(dirname(file), 'sorttable.js'))
+  writeLines(dragtable, file.path(dirname(file), 'dragtable.js'))
+
+  p <- openPage(basename(file), dirname(file), link.javascript = c('sorttable.js', 'dragtable.js'), link.css = css)
+  pp <- hwrite(title)
+  pp <- paste(pp, hwrite(ans, table.class = list('sortable draggable'), table.align = 'center', row.names = FALSE), sep = '\n')
+  hwrite(pp, p)
+  closePage(p)
+}

@@ -2,7 +2,7 @@
 % Please edit documentation in R/roasthtml.R
 \name{htmlrgsa2}
 \alias{htmlrgsa2}
-\title{Low-Level ROAST Plot Engine and Property Structuring Adapter}
+\title{Generate Global Enrichment Tables and Structural Diagnostic Layout Graphics}
 \usage{
 htmlrgsa2(
   obj,
@@ -15,7 +15,7 @@ htmlrgsa2(
   ploteffsize = TRUE,
   links_plots = list(stats = NULL, gsea = NULL, heatmap = NULL, effsize = NULL),
   y,
-  whplots = NULL,
+  whplot = NULL,
   geneDEhtmlfiles = NULL,
   title = "",
   margins = c(15, 12),
@@ -26,61 +26,61 @@ htmlrgsa2(
   mycol,
   varrot,
   psel = NULL,
-  sorttable,
-  dragtable,
+  sorttable = "",
+  dragtable = "",
   ...
 )
 }
 \arguments{
-\item{obj}{An object of class `roastgsa`.}
+\item{obj}{A valid \code{roastgsa} container metrics object.}
 
-\item{htmlpath}{Character. Core output path where table indices will live.}
+\item{htmlpath}{Character. Core framework folder directory target path. Default "".}
 
-\item{htmlname}{Character. Main target sheet filename string.}
+\item{htmlname}{Character. Main target document layout filename. Default "file.html".}
 
-\item{plotpath}{Character. Relative path directory snippet where generated PNG files are exported.}
+\item{plotpath}{Character. Local child relative folder directory targeting internal visuals. Default "".}
 
-\item{plotstats}{Logical. If TRUE, renders distribution stats diagrams. Default TRUE.}
+\item{plotstats}{Logical. Controls running diagnostic visual statistics generation loops. Default TRUE.}
 
-\item{plotgsea}{Logical. If TRUE, renders cumulative GSEA running sums. Default TRUE.}
+\item{plotgsea}{Logical. Controls execution pathways mapping baseline GSEA profiles. Default TRUE.}
 
-\item{indheatmap}{Logical. If TRUE, renders expression matrix heatmaps. Default TRUE.}
+\item{indheatmap}{Logical. Renders distinct matrix heat maps tracking active target expressions. Default TRUE.}
 
-\item{ploteffsize}{Logical. If TRUE, renders effect size metrics signature charts. Default TRUE.}
+\item{ploteffsize}{Logical. Evaluates profile size effects signatures. Default TRUE.}
 
-\item{links_plots}{A list containing explicit, override filepaths/URLs for generated plots.}
+\item{links_plots}{A structured list parsing unique relative paths matching downstream plot destinations.}
 
-\item{y}{A numeric matrix of normalized gene expression values.}
+\item{y}{Expression counts target numerical background matrix.}
 
-\item{whplots}{Character vector. Explicit subset of pathway IDs to generate plots for.}
+\item{whplot}{Target array matching identifiers across gene set indexes to render manually. Default NULL.}
 
-\item{geneDEhtmlfiles}{Character vector. Paths to matching child sheets created by `roastHtmlDETable`.}
+\item{geneDEhtmlfiles}{Character mapping array pointing cleanly to lower-level nested child page frames. Default NULL.}
 
-\item{title}{Character. Text or HTML markup string to serve as header banner title.}
+\item{title}{Character layout header text string mapping raw web content templates. Default "".}
 
-\item{margins}{Numeric vector of length 2. Axis margin controls for traditional heatmap rendering. Default c(15, 12).}
+\item{margins}{Numeric vector tracking visual boundaries formatting parameters. Default c(15, 12).}
 
-\item{sizesHeatmap}{Numeric vector of length 2. Canvas dimensions (Height, Width) for heatmap PNG exports. Default c(1200, 800).}
+\item{sizesHeatmap}{Numeric vector parsing layout dimension specifications. Default c(1200, 800).}
 
-\item{typeheatmap}{Character vector. Target layout framework option string ("heatmap.2" vs "ggplot2").}
+\item{typeheatmap}{Character vector detailing preferred baseline engine types. Default c("heatmap.2", "ggplot2").}
 
-\item{intvar}{Character. Metadata factor tracking biological variable of interest.}
+\item{intvar}{Character parameter context specifying active experimental design tracking parameters.}
 
-\item{adj.var}{Character. Design factor metadata variations to adjust for. Default NULL.}
+\item{adj.var}{Supplementary metadata tracking adjustments covariates matrix. Default NULL.}
 
-\item{mycol}{Vector of color spectrum palettes for visual plotting elements.}
+\item{mycol}{Vector palette configuring structural map visualization themes.}
 
-\item{varrot}{Numeric vector or matrix representing rotatable model variation coordinates.}
+\item{varrot}{Numeric signature parameter targeting profile metrics calculations. Optional.}
 
-\item{psel}{Numeric vector. Extracted feature row pointer configurations. Default NULL.}
+\item{psel}{Supplementary significance parameter maps selector. Default NULL.}
 
-\item{sorttable}{Character string containing contents of `sorttable.js`.}
+\item{sorttable}{String containing base Javascript utility logic. Default "".}
 
-\item{dragtable}{Character string containing contents of `dragtable.js`.}
+\item{dragtable}{String containing baseline Javascript interactivity logic. Default "".}
 
-\item{...}{Optional arguments passed down to downstream low-level plotting functions.}
+\item{...}{Additional argument options passed securely to downstream graphics functions.}
 }
 \description{
-Generates functional PNG diagrams (GSEA, Stats, Heatmaps) from `roastgsa` data structures,
-configures directory trees, and maps relational plotting variables to `write.html.mod2`.
+Processes statistical records across designated parameters to generate structural png
+matrix diagnostics and wraps summary matrix metadata maps into primary target pages.
 }

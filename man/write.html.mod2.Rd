@@ -2,37 +2,37 @@
 % Please edit documentation in R/roasthtml.R
 \name{write.html.mod2}
 \alias{write.html.mod2}
-\title{Core HTML Assembler and Dynamic Table Generation Wrapper}
+\title{Write Structured Web Documentation Files onto Persistent Target Disk Spaces}
 \usage{
 write.html.mod2(
   x,
-  file = paste0(htmlpath, htmlname),
-  links = links,
-  tiny.pic = plots,
-  sorttable = sorttable,
-  dragtable = dragtable,
+  file = "file.html",
+  links = list(),
+  tiny.pic = list(),
+  sorttable = "",
+  dragtable = "",
   css = "../../../../../biostats.css",
-  title = title
+  title = ""
 )
 }
 \arguments{
-\item{x}{A structured data.frame to print.}
+\item{x}{A structured data.frame containing metadata layout results tracking values.}
 
-\item{file}{Character. Full path configuration target for file generation.}
+\item{file}{Character. Clean absolute target file path to compile toward. Default "file.html".}
 
-\item{links}{A structured list containing column-matched URL targets.}
+\item{links}{List parsing functional string formatting directives targeting anchor parameters. Default list().}
 
-\item{tiny.pic}{A structured list containing column-matched graphic paths.}
+\item{tiny.pic}{List mapping target layout parameters defining visual image destinations. Default list().}
 
-\item{sorttable}{Character string containing contents of `sorttable.js`.}
+\item{sorttable}{String sequence detailing sorting utilities logic scripts. Default "".}
 
-\item{dragtable}{Character string containing contents of `dragtable.js`.}
+\item{dragtable}{String sequence tracking dragging utilities engine parameters. Default "".}
 
-\item{css}{Character. Relative path configuration target for CSS files.}
+\item{css}{Character string declaring stylesheet layout configurations. Default '../../../../../biostats.css'.}
 
-\item{title}{Character. Text element to serve as the document title.}
+\item{title}{Character string header title injected onto page setups. Default "".}
 }
 \description{
-Writes dynamic table elements, formats embedded hyperlinks/images, and
-outputs unified files utilizing internal `hwriter` constructs.
+Merges string lists mapping anchor tags and thumbnail targets directly into data frames,
+writing target configurations alongside local dependencies onto persistent file assets.
 }

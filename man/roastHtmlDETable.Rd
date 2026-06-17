@@ -2,7 +2,7 @@
 % Please edit documentation in R/roasthtml.R
 \name{roastHtmlDETable}
 \alias{roastHtmlDETable}
-\title{Create Individual Gene-Level DE Detail HTML Sheets}
+\title{Export Nested Differential Expression Target Layout Sub-tables}
 \usage{
 roastHtmlDETable(
   mygs,
@@ -19,29 +19,29 @@ roastHtmlDETable(
 )
 }
 \arguments{
-\item{mygs}{A discrete `roastgsa` collection output list.}
+\item{mygs}{A specific \code{roastgsa} results structure object.}
 
-\item{gs}{Character. Name of the gene set collection.}
+\item{gs}{Character. The target name context matching background collections.}
 
-\item{i}{Character. Name of the contrast.}
+\item{i}{Character. The specific contrast assignment tracker.}
 
-\item{detable}{A data.frame containing DE table metrics for contrast `i`.}
+\item{detable}{A data.frame mapping baseline differential parameters.}
 
-\item{DEdir}{Character. Path to base directory containing stripcharts.}
+\item{DEdir}{Character. Input file storage directory referencing static plots.}
 
-\item{filename}{Character. Main index filename string.}
+\item{filename}{Character. Output name specification tracking target templates.}
 
-\item{dirname}{Character. Core directory path where nested files will be created.}
+\item{dirname}{Character. Container folder path destination mapping components.}
 
-\item{maxgs}{Integer. Maximum number of paths to process. Default 50.}
+\item{maxgs}{Integer. Maximum scale tracking threshold. Default 50.}
 
-\item{verbose}{Logical. If TRUE, logs internal loop progress. Default TRUE.}
+\item{verbose}{Logical. Enables output standard messages. Default TRUE.}
 
-\item{selcols}{Character vector. Explicit columns to subset from `detable`.}
+\item{selcols}{Vector of characters filtering acceptable column outputs.}
 
-\item{vorder}{Character. Numeric column name to sort gene rows by.}
+\item{vorder}{Character string declaring variable order hierarchy sequence targeting.}
 }
 \description{
-Extracts matching genes for a specific pathway, rounds numeric metrics, sets up
-JavaScript sorting/dragging wrappers, and compiles individual child HTML sheets.
+Evaluates specific matching features between target gene set lists and dynamic sequence structures,
+writing localized independent HTML tracking sheets mapping data frames into interactive sortable models.
 }

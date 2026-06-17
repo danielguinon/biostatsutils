@@ -16,11 +16,11 @@ roastHtmlTables(
   DEdir = NULL,
   returnData = TRUE,
   intvar = NULL,
-  mycol = mycol
+  mycol = NULL
 )
 }
 \arguments{
-\item{x}{A list of lists containing `roastgsa` results objects structured by contrast and gene set collection.}
+\item{x}{A list of lists containing \code{roastgsa} results objects structured by contrast and gene set collection.}
 
 \item{y}{A list of data.frames containing Differential Expression (DE) metrics structured by contrast.}
 

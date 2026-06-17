@@ -2,7 +2,7 @@
 % Please edit documentation in R/roasthtml.R
 \name{roastHtmlTable}
 \alias{roastHtmlTable}
-\title{Construct a Single Gene Set Collection Level HTML Overview}
+\title{Generate HTML Report Table for a Specific Gene Set and Contrast}
 \usage{
 roastHtmlTable(
   mygs,
@@ -20,43 +20,52 @@ roastHtmlTable(
   selcols,
   vorder,
   apval.cut = 0.05,
-  mycol = mycol
+  mycol = NULL,
+  outdir = "./",
+  sorttable = "",
+  dragtable = ""
 )
 }
 \arguments{
-\item{mygs}{A discrete `roastgsa` collection output list containing `$res` and `$index`.}
+\item{mygs}{A specific \code{roastgsa} results object.}
 
-\item{gs}{Character. Target name/identifier of the gene set collection.}
+\item{gs}{Character. The name or identifier of the gene set collection.}
 
-\item{i}{Character. Target name/identifier of the contrast.}
+\item{i}{Character. The name or identifier of the contrast group.}
 
-\item{filename}{Character. Target HTML filename output.}
+\item{filename}{Character. Target file name string for the output layout page.}
 
-\item{dirname}{Character. Core target path where files will be compiled.}
+\item{dirname}{Character. Directory path destination tracking framework components.}
 
-\item{indhtml}{Logical. If TRUE, creates individual nested child HTML sheets for genes.}
+\item{indhtml}{Logical. If TRUE, generates nested child pages for local gene expressions.}
 
-\item{DEdir}{Character. Source directory path containing static figures. Default NULL.}
+\item{DEdir}{Character. Optional source path containing auxiliary diagnostic illustrations. Default NULL.}
 
-\item{detable}{A data.frame containing DE table metrics for contrast `i`. Default NULL.}
+\item{detable}{A data.frame containing differential expression parameters for subsetting workflows. Default NULL.}
 
-\item{maxgs}{Integer. Maximum number of paths to include after filtering. Default 50.}
+\item{maxgs}{Integer. Maximum threshold cutoff for tracking high-scoring gene expressions. Default 50.}
 
-\item{verbose}{Logical. If TRUE, logs generation progress to the console. Default TRUE.}
+\item{verbose}{Logical. If TRUE, messages execution metrics out to console. Default TRUE.}
 
-\item{mat}{A numeric matrix of normalized gene expression values.}
+\item{mat}{A numeric matrix of expression value counts.}
 
-\item{intvar}{Character. Design variable of interest. Default NULL.}
+\item{intvar}{Character. Primary experimental variable context tracking group metadata. Default NULL.}
 
-\item{selcols}{Character vector. Explicit columns to keep from `detable`.}
+\item{selcols}{Vector of string characters matching explicit column subsets to extract.}
 
-\item{vorder}{Character. Column name to use for descending absolute sorting.}
+\item{vorder}{Character. Destination column sorting sequence assignment identifier.}
 
-\item{apval.cut}{Numeric. Significance threshold value for FDR adjustment filtering. Default 0.05.}
+\item{apval.cut}{Numeric. Adjusted p-value threshold for considering paths significant. Default 0.05.}
 
-\item{mycol}{Vector of color definitions for heatmap generation.}
+\item{mycol}{Vector of color definitions for standard mapping layouts. Default NULL.}
+
+\item{outdir}{Character. Base directory tracking root structural framework components. Default './'.}
+
+\item{sorttable}{Character string containing raw JavaScript file code logic for sortable structures. Default "".}
+
+\item{dragtable}{Character string containing raw JavaScript file code logic for draggable tables. Default "".}
 }
 \description{
-Filters gene set statistics using significance thresholds, orchestrates diagnostic
-image plotting, and calls high-level HTML assembly functions.
+Filters gene set analysis results based on significance controls, builds underlying
+image assets, and generates a structured summary web page directory tracking background signals.
 }
