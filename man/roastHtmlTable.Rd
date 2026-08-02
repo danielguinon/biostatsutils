@@ -9,7 +9,7 @@ roastHtmlTable(
   gs,
   i,
   filename,
-  dirname,
+  out_dirname,
   indhtml,
   DEdir = NULL,
   detable = NULL,
@@ -34,8 +34,6 @@ roastHtmlTable(
 \item{i}{Character. The name or identifier of the contrast group.}
 
 \item{filename}{Character. Target file name string for the output layout page.}
-
-\item{dirname}{Character. Directory path destination tracking framework components.}
 
 \item{indhtml}{Logical. If TRUE, generates nested child pages for local gene expressions.}
 
@@ -64,6 +62,8 @@ roastHtmlTable(
 \item{sorttable}{Character string containing raw JavaScript file code logic for sortable structures. Default "".}
 
 \item{dragtable}{Character string containing raw JavaScript file code logic for draggable tables. Default "".}
+
+\item{dirname}{Character. Directory path destination tracking framework components.}
 }
 \description{
 Filters gene set analysis results based on significance controls, builds underlying

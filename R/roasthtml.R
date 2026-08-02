@@ -18,47 +18,48 @@
 #'
 #' @importFrom parallel mclapply
 #' @export
-roastHtmlTables <- function(x, y, mat, mc.cores.x=1, mc.cores.y=1, outdir='./',
-                            maxgs=50, indhtml=TRUE, DEdir=NULL, returnData=TRUE,
-                            intvar=NULL, mycol=NULL) {
-  # Defensive checks
-  if (is.null(mycol)) stop("A color palette 'mycol' must be provided.")
-  if (!dir.exists(outdir)) dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
-
-  # Fetch JavaScript utilities bundled within phenoTest safely
-  sorttable_src <- system.file("javascript", "sorttable.js", package = "phenoTest")
-  dragtable_src <- system.file("javascript", "dragtable.js", package = "phenoTest")
-
+roastHtmlTables <- function (x, y, mat, mc.cores=1, outdir = "./",
+maxgs = 50, indhtml = TRUE, DEdir = NULL, returnData = TRUE,
+intvar = NULL, mycol = NULL)
+{
+  if (is.null(mycol))
+    stop("A color palette 'mycol' must be provided.")
+  if (!dir.exists(outdir))
+    dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
+  sorttable_src <- system.file("javascript", "sorttable.js",
+                               package = "phenoTest")
+  dragtable_src <- system.file("javascript", "dragtable.js",
+                               package = "phenoTest")
   if (sorttable_src == "" || dragtable_src == "") {
     warning("JavaScript utility assets could not be located via system.file. Falling back to empty strings.")
     sorttable_code <- ""
     dragtable_code <- ""
-  } else {
+  }
+  else {
     sorttable_code <- readLines(sorttable_src, warn = FALSE)
     dragtable_code <- readLines(dragtable_src, warn = FALSE)
   }
+  ans <- mclapply(names(x[[1]]), function(gs) {
+    #failed <- unlist(lapply(ans, function(row) sapply(row, inherits, what = "try-error")))
+    #if (any(failed)) warning(sprintf("%d/%d HTML sub-pages failed — check messages above.", sum(failed), length(failed)))
 
-  ans <- mclapply(names(x[[1]]), function(gs) { ## Genesets
-    mclapply(names(y), function(i) { ## Contrasts
+    lapply(names(y), function(i) {
       mygs <- x[[i]][[gs]]
-
-      # Define deterministic, isolated directory paths for this geneset loop
       geneset_dir <- file.path(outdir, "roastGSA", "html", gs)
-      filename_html <- sprintf('roastGSA_MaxMean_%s_%s.html', gs, i)
+      filename_html <- sprintf("roastGSA_MaxMean_%s_%s.html", gs, i)
 
       roastHtmlTable(
-        mygs = mygs, gs = gs, i = i,
-        filename = filename_html, dirname = geneset_dir,
-        indhtml = indhtml, DEdir = DEdir, detable = y[[i]],
-        maxgs = maxgs, mat = mat, intvar = intvar,
+        mygs = mygs, gs = gs, i = i, filename = filename_html,
+        out_dirname = geneset_dir, indhtml = indhtml, DEdir = DEdir,
+        detable = y[[i]], maxgs = maxgs, mat = mat, intvar = intvar,
         selcols = colnames(y[[i]]), vorder = colnames(y[[i]])[ncol(y[[i]])],
-        mycol = mycol, outdir = outdir,
-        sorttable = sorttable_code, dragtable = dragtable_code
+        mycol = mycol, outdir = outdir, sorttable = sorttable_code,
+        dragtable = dragtable_code
       )
-    }, mc.cores = mc.cores.x)
-  }, mc.cores = mc.cores.y)
-
-  if (returnData) return(ans)
+    })
+  }, mc.cores = mc.cores)
+  if (returnData)
+    return(ans)
 }
 
 
@@ -88,52 +89,80 @@ roastHtmlTables <- function(x, y, mat, mc.cores.x=1, mc.cores.y=1, outdir='./',
 #' @param dragtable Character string containing raw JavaScript file code logic for draggable tables. Default "".
 #'
 #' @export
-roastHtmlTable <- function(mygs, gs, i, filename, dirname, indhtml, DEdir=NULL,
-                           detable=NULL, maxgs=50, verbose=TRUE, mat, intvar=NULL,
-                           selcols, vorder, apval.cut=0.05, mycol=NULL, outdir='./',
-                           sorttable="", dragtable="") {
+roastHtmlTable <- function(mygs, gs, i, filename, out_dirname, indhtml, DEdir = NULL,
+                           detable = NULL, maxgs = 50, verbose = TRUE, mat, intvar = NULL,
+                           selcols, vorder, apval.cut = 0.05, mycol = NULL, outdir = "./",
+                           sorttable = "", dragtable = "")
+{
+  if (indhtml && is.null(detable))
+    stop("indhtml is TRUE but no DE table provided")
 
-  if (indhtml && is.null(detable)) stop('indhtml is TRUE but no DE table provided')
-
-  ## Filter for significance; if less than 10 pass, grab top 10 rows
-  mygs$res <- mygs$res[order(abs(mygs$res$nes), decreasing = TRUE), ]
-  sel <- mygs$res$adj.pval < apval.cut
-  if (sum(sel) < 10) {
-    mmax <- min(10, nrow(mygs$res))
-    sel <- 1:mmax
+  # Guard: ensure result frame exists and is non-empty
+  if (is.null(mygs$res) || nrow(mygs$res) == 0) {
+    if (verbose) message(sprintf("Skipping %s in %s: empty results.", gs, i))
+    return(NULL)
   }
-  mygs$res <- mygs$res[sel, ]
-  mygs$res <- mygs$res[1:min(nrow(mygs$res), maxgs), ]
+
+  # Sort by absolute NES decreasing
+  mygs$res <- mygs$res[order(abs(mygs$res$nes), decreasing = TRUE), ]
+
+  # select significant gene sets (handling NAs)
+  sel <- which(mygs$res$adj.pval < apval.cut)
+  if (length(sel) < 10) {
+    mmax <- min(10, nrow(mygs$res))
+    sel <- seq_len(mmax)
+  }
+
+  mygs$res <- mygs$res[sel, , drop = FALSE]
+
+  # Trim to maxgs
+  if (nrow(mygs$res) > 0) {
+    mygs$res <- mygs$res[seq_len(min(nrow(mygs$res), maxgs)), , drop = FALSE]
+  }
+
+  # Align gene set indices
   mygs$index <- mygs$index[rownames(mygs$res)]
 
   if (verbose) {
-    message(sprintf('Writing output for %s in %s (%d selected genesets)', gs, i, nrow(mygs$res)))
+    message(sprintf("Writing output for %s in %s (%d selected genesets)",
+                    gs, i, nrow(mygs$res)))
   }
 
-  if (!dir.exists(dirname)) dir.create(dirname, recursive = TRUE, showWarnings = FALSE)
+  if (!dir.exists(out_dirname))
+    dir.create(out_dirname, recursive = TRUE, showWarnings = FALSE)
+
 
   if (indhtml) {
-    geneDEhtmlfiles <- sprintf('%s_indhtml/%s_genes.html', i, rownames(mygs$res))
+    geneDEhtmlfiles <- sprintf("%s_indhtml/%s_genes.html", i, rownames(mygs$res))
   } else {
     geneDEhtmlfiles <- NULL
   }
 
-  html_target_path <- file.path(outdir, "roastGSA", "html", gs, "/")
+  html_target_path <- file.path(outdir, "roastGSA", "html", gs)
 
   htmlrgsa2(
-    obj = mygs, htmlpath = html_target_path, htmlname = filename,
-    plotpath = sprintf('%s_images/', i), indheatmap = FALSE, y = mat,
-    intvar = intvar, ploteffsize = FALSE, mycol = mycol,
-    geneDEhtmlfiles = geneDEhtmlfiles, sorttable = sorttable, dragtable = dragtable,
+    obj = mygs,
+    htmlpath = html_target_path,
+    htmlname = filename,
+    plotpath = sprintf("%s_images/", i),
+    indheatmap = FALSE,
+    y = mat,
+    intvar = intvar,
+    ploteffsize = FALSE,
+    mycol = mycol,
+    geneDEhtmlfiles = geneDEhtmlfiles,
+    sorttable = sorttable,
+    dragtable = dragtable,
     whplot = rownames(mygs$res),
-    title = sprintf('<center><h4>%s | %s</h4></center>', gs, i)
+    title = sprintf("<center><h4>%s | %s</h4></center>", gs, i)
   )
 
   if (indhtml) {
     roastHtmlDETable(
-      mygs = mygs, gs = gs, i = i, detable = detable, DEdir = DEdir,
-      filename = filename, dirname = dirname, maxgs = maxgs,
-      verbose = verbose, selcols = selcols, vorder = vorder
+      mygs = mygs, gs = gs, i = i, detable = detable,
+      DEdir = DEdir, filename = filename, out_dirname = out_dirname,
+      maxgs = maxgs, verbose = verbose, selcols = selcols,
+      vorder = vorder
     )
   }
 }
@@ -158,14 +187,20 @@ roastHtmlTable <- function(mygs, gs, i, filename, dirname, indhtml, DEdir=NULL,
 #'
 #' @importFrom hwriter hwrite openPage closePage
 #' @export
-roastHtmlDETable <- function(mygs, gs, i, detable, DEdir, filename, dirname,
+roastHtmlDETable <- function(mygs, gs, i, detable, DEdir, filename, out_dirname,
                              maxgs=50, verbose=TRUE, selcols, vorder) {
 
+  # if (!"symbol" %in% colnames(detable)) {
+  #   stop("The provided differential expression table 'detable' is missing a 'symbol' column.")
+  # }
   if (!"symbol" %in% colnames(detable)) {
-    stop("The provided differential expression table 'detable' is missing a 'symbol' column.")
+    warning(sprintf("Skipping gene-level DE tables for %s | %s: no 'symbol' column (found: %s).",
+                    gs, i, paste(colnames(detable), collapse = ", ")))
+    return(invisible(NULL))
+
   }
 
-  outdir <- file.path(dirname, sprintf('%s_indhtml', i))
+  outdir <- file.path(out_dirname, sprintf('%s_indhtml', i))
   if (!dir.exists(outdir)) dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
 
   st <- system.file("javascript", "sorttable.js", package = "phenoTest")
@@ -252,7 +287,16 @@ htmlrgsa2 <- function (obj, htmlpath = "", htmlname = "file.html", plotpath = ""
   if (ploteffsize && missing(varrot))
     stop("varrot is missing and required when ploteffsize is TRUE")
 
+  htmlpath <- sub("/*$", "/", htmlpath) # This line guarantees one trailing slash "/"
+
+  # Unique, filesystem-safe id per gene set — reused everywhere a filename
+  # is derived from a gene-set name, so collisions can't silently overwrite plots.
   x <- data.frame(geneset = rownames(obj$res), obj$res)
+  safe_id <- setNames(
+    sprintf("%04d_%s", seq_along(rownames(x)), gsub("[^[:alnum:]]+", "_", rownames(x))),
+    rownames(x)
+  )
+
   index <- obj$index[rownames(x)]
   psel2 <- psel
 
@@ -263,31 +307,41 @@ htmlrgsa2 <- function (obj, htmlpath = "", htmlname = "file.html", plotpath = ""
 
     if (!is.na(whplot[1])) {
       stats <- sort(obj$stats)
-      index <- sapply(obj$index, function(z) which(names(stats) %in% z))
+      # index <- sapply(obj$index, function(z) which(names(stats) %in% z))
 
       for (k in whplot) {
-        clean_k <- gsub("[[:punct:]]", " ", k)
+        # clean_k <- gsub("[[:punct:]]", " ", k)
+        clean_k <- safe_id[[k]]
 
+        # if (plotstats) {
+        #   png(paste0(htmlpath, plotpath, clean_k, "_stats.png"))
+        #   plotStats(obj, whplot = k, ...)
+        #   dev.off()
+        # }
         if (plotstats) {
           png(paste0(htmlpath, plotpath, clean_k, "_stats.png"))
-          plotStats(obj, whplot = k, ...)
+          tryCatch(plotStats(obj, whplot = k, ...),
+                   error = function(e) message("plotStats failed for '", k, "': ", conditionMessage(e)))
           dev.off()
         }
         if (plotgsea) {
           png(paste0(htmlpath, plotpath, clean_k, "_gsea.png"))
-          plotGSEA(obj, whplot = k, ...)
+          tryCatch(plotGSEA(obj, whplot = k, ...),
+                   error = function(e) message("plotStats failed for '", k, "': ", conditionMessage(e)))
           dev.off()
         }
         if (indheatmap) {
           png(paste0(htmlpath, plotpath, clean_k, "_heatmap.png"),
               width = sizesHeatmap[2], height = sizesHeatmap[1])
-          heatmaprgsa_hm(obj, y, whplot = k, mycol = mycol,
-                         intvar = intvar, adj.var = adj.var, psel = psel2, ...)
+          tryCatch(heatmaprgsa_hm(obj, whplot = k, mycol = mycol,
+                                  intvar = intvar, adj.var = adj.var, psel = psel2, ...),
+                   error = function(e) message("plotStats failed for '", k, "': ", conditionMessage(e)))
           dev.off()
         }
         if (ploteffsize) {
           png(paste0(htmlpath, plotpath, clean_k, "_effsize.png"))
-          ploteffsignaturesize(obj, varrot, whplot = k)
+          tryCatch(ploteffsignaturesize(obj, whplot = k, ...),
+                   error = function(e) message("plotStats failed for '", k, "': ", conditionMessage(e)))
           dev.off()
         }
       }
@@ -305,7 +359,9 @@ htmlrgsa2 <- function (obj, htmlpath = "", htmlname = "file.html", plotpath = ""
   names(links) <- colnames(x)
   plots <- links
 
-  clean_rownames <- gsub("[[:punct:]]", " ", rownames(x))
+  # clean_rownames <- gsub("[[:punct:]]", " ", rownames(x))
+  clean_rownames <- safe_id[rownames(x)]
+
 
   if (!is.null(links_plots$stats)) links$plot_stats <- plots$plot_stats <- links_plots$stats
   else if (plotstats) links$plot_stats <- plots$plot_stats <- paste0(plotpath, clean_rownames, "_stats.png")
@@ -328,6 +384,7 @@ htmlrgsa2 <- function (obj, htmlpath = "", htmlname = "file.html", plotpath = ""
                   tiny.pic = plots, title = title, sorttable = sorttable,
                   dragtable = dragtable, ...)
 }
+
 
 
 #' Write Structured Web Documentation Files onto Persistent Target Disk Spaces

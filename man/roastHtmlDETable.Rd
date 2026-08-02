@@ -11,7 +11,7 @@ roastHtmlDETable(
   detable,
   DEdir,
   filename,
-  dirname,
+  out_dirname,
   maxgs = 50,
   verbose = TRUE,
   selcols,
@@ -31,8 +31,6 @@ roastHtmlDETable(
 
 \item{filename}{Character. Output name specification tracking target templates.}
 
-\item{dirname}{Character. Container folder path destination mapping components.}
-
 \item{maxgs}{Integer. Maximum scale tracking threshold. Default 50.}
 
 \item{verbose}{Logical. Enables output standard messages. Default TRUE.}
@@ -40,6 +38,8 @@ roastHtmlDETable(
 \item{selcols}{Vector of characters filtering acceptable column outputs.}
 
 \item{vorder}{Character string declaring variable order hierarchy sequence targeting.}
+
+\item{dirname}{Character. Container folder path destination mapping components.}
 }
 \description{
 Evaluates specific matching features between target gene set lists and dynamic sequence structures,
