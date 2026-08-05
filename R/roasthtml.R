@@ -38,15 +38,15 @@ roastHtmlTables <- function (x, y, mat, mc.cores = 1, outdir = "./",
   }
 
   # All combinations
-  grid_tareas <- expand.grid(
+  grid_tasks <- expand.grid(
     gs = names(x[[1]]),
     i  = names(y),
     stringsAsFactors = FALSE
   )
 
-  results_flat <- mclapply(seq_len(nrow(grid_tareas)), function(idx) {
-    gs <- grid_tareas$gs[idx]
-    i  <- grid_tareas$i[idx]
+  results_flat <- mclapply(seq_len(nrow(grid_tasks)), function(idx) {
+    gs <- grid_tasks$gs[idx]
+    i  <- grid_tasks$i[idx]
 
     mygs <- x[[i]][[gs]]
     geneset_dir <- file.path(outdir, "roastGSA", "html", gs)
@@ -63,9 +63,9 @@ roastHtmlTables <- function (x, y, mat, mc.cores = 1, outdir = "./",
   }, mc.cores = mc.cores)
 
   if (returnData) {
-    ans <- split(results_flat, grid_tareas$gs)
+    ans <- split(results_flat, grid_tasks$gs)
     ans <- lapply(ans, function(gs_group) {
-      names(gs_group) <- grid_tareas$i[1:length(gs_group)]
+      names(gs_group) <- grid_tasks$i[1:length(gs_group)]
       gs_group
     })
     return(ans)
@@ -155,7 +155,7 @@ roastHtmlTable <- function(mygs, gs, i, filename, out_dirname, indhtml, DEdir = 
     htmlpath = html_target_path,
     htmlname = filename,
     plotpath = sprintf("%s_images/", i),
-    indheatmap = FALSE,
+    indheatmap = TRUE,
     y = mat,
     intvar = intvar,
     ploteffsize = FALSE,
