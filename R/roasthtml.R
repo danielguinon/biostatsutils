@@ -6,8 +6,7 @@
 #' @param x A list of lists containing \code{roastgsa} results objects structured by contrast and gene set collection.
 #' @param y A list of data.frames containing Differential Expression (DE) metrics structured by contrast.
 #' @param mat A numeric matrix of normalized gene expression values.
-#' @param mc.cores.x Integer. Number of cores for processing contrasts. Default 1.
-#' @param mc.cores.y Integer. Number of cores for processing gene set collections. Default 1.
+#' @param mc.cores Default 1.
 #' @param outdir Character. Output path for results directories. Default './'.
 #' @param maxgs Integer. Maximum number of top paths to include per report. Default 50.
 #' @param indhtml Logical. If TRUE, creates dedicated nested child HTML sheets for individual genes. Default TRUE.
@@ -18,48 +17,59 @@
 #'
 #' @importFrom parallel mclapply
 #' @export
-roastHtmlTables <- function (x, y, mat, mc.cores=1, outdir = "./",
-maxgs = 50, indhtml = TRUE, DEdir = NULL, returnData = TRUE,
-intvar = NULL, mycol = NULL)
-{
+roastHtmlTables <- function (x, y, mat, mc.cores = 1, outdir = "./",
+  maxgs = 50, indhtml = TRUE, DEdir = NULL,
+  returnData = TRUE, intvar = NULL, mycol = NULL){
   if (is.null(mycol))
     stop("A color palette 'mycol' must be provided.")
   if (!dir.exists(outdir))
     dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
-  sorttable_src <- system.file("javascript", "sorttable.js",
-                               package = "phenoTest")
-  dragtable_src <- system.file("javascript", "dragtable.js",
-                               package = "phenoTest")
+
+  sorttable_src <- system.file("javascript", "sorttable.js", package = "phenoTest")
+  dragtable_src <- system.file("javascript", "dragtable.js", package = "phenoTest")
+
   if (sorttable_src == "" || dragtable_src == "") {
     warning("JavaScript utility assets could not be located via system.file. Falling back to empty strings.")
     sorttable_code <- ""
     dragtable_code <- ""
-  }
-  else {
+  } else {
     sorttable_code <- readLines(sorttable_src, warn = FALSE)
     dragtable_code <- readLines(dragtable_src, warn = FALSE)
   }
-  ans <- mclapply(names(x[[1]]), function(gs) {
-    #failed <- unlist(lapply(ans, function(row) sapply(row, inherits, what = "try-error")))
-    #if (any(failed)) warning(sprintf("%d/%d HTML sub-pages failed — check messages above.", sum(failed), length(failed)))
 
-    lapply(names(y), function(i) {
-      mygs <- x[[i]][[gs]]
-      geneset_dir <- file.path(outdir, "roastGSA", "html", gs)
-      filename_html <- sprintf("roastGSA_MaxMean_%s_%s.html", gs, i)
+  # All combinations
+  grid_tareas <- expand.grid(
+    gs = names(x[[1]]),
+    i  = names(y),
+    stringsAsFactors = FALSE
+  )
 
-      roastHtmlTable(
-        mygs = mygs, gs = gs, i = i, filename = filename_html,
-        out_dirname = geneset_dir, indhtml = indhtml, DEdir = DEdir,
-        detable = y[[i]], maxgs = maxgs, mat = mat, intvar = intvar,
-        selcols = colnames(y[[i]]), vorder = colnames(y[[i]])[ncol(y[[i]])],
-        mycol = mycol, outdir = outdir, sorttable = sorttable_code,
-        dragtable = dragtable_code
-      )
-    })
+  results_flat <- mclapply(seq_len(nrow(grid_tareas)), function(idx) {
+    gs <- grid_tareas$gs[idx]
+    i  <- grid_tareas$i[idx]
+
+    mygs <- x[[i]][[gs]]
+    geneset_dir <- file.path(outdir, "roastGSA", "html", gs)
+    filename_html <- sprintf("roastGSA_MaxMean_%s_%s.html", gs, i)
+
+    roastHtmlTable(
+      mygs = mygs, gs = gs, i = i, filename = filename_html,
+      out_dirname = geneset_dir, indhtml = indhtml, DEdir = DEdir,
+      detable = y[[i]], maxgs = maxgs, mat = mat, intvar = intvar,
+      selcols = colnames(y[[i]]), vorder = colnames(y[[i]])[ncol(y[[i]])],
+      mycol = mycol, outdir = outdir, sorttable = sorttable_code,
+      dragtable = dragtable_code
+    )
   }, mc.cores = mc.cores)
-  if (returnData)
+
+  if (returnData) {
+    ans <- split(results_flat, grid_tareas$gs)
+    ans <- lapply(ans, function(gs_group) {
+      names(gs_group) <- grid_tareas$i[1:length(gs_group)]
+      gs_group
+    })
     return(ans)
+  }
 }
 
 

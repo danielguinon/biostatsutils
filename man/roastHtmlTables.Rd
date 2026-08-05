@@ -25,6 +25,8 @@ roastHtmlTables(
 
 \item{mat}{A numeric matrix of normalized gene expression values.}
 
+\item{mc.cores}{Default 1.}
+
 \item{outdir}{Character. Output path for results directories. Default './'.}
 
 \item{maxgs}{Integer. Maximum number of top paths to include per report. Default 50.}
@@ -38,10 +40,6 @@ roastHtmlTables(
 \item{intvar}{Character. Name of the primary design variable of interest. Default NULL.}
 
 \item{mycol}{Vector of color definitions for heatmap generation.}
-
-\item{mc.cores.x}{Integer. Number of cores for processing contrasts. Default 1.}
-
-\item{mc.cores.y}{Integer. Number of cores for processing gene set collections. Default 1.}
 }
 \description{
 Evaluates multiple collections of gene sets across multiple contrasts using
