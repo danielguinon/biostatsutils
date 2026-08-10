@@ -343,10 +343,12 @@ htmlrgsa2 <- function (obj, htmlpath = "", htmlname = "file.html", plotpath = ""
         if (indheatmap) {
           png(paste0(htmlpath, plotpath, clean_k, "_heatmap.png"),
               width = sizesHeatmap[2], height = sizesHeatmap[1])
-          tryCatch(heatmaprgsa_hm(obj, whplot = k, mycol = mycol,
-                                  intvar = intvar, adj.var = adj.var, psel = psel2,
-                                  toplot = TRUE, pathwaylevel = FALSE, ...),
-                   error = function(e) message("heatmaprgsa_hm failed for '", k, "': ", conditionMessage(e)))
+          tryCatch({
+            hm_obj <- heatmaprgsa_hm(obj, y = y, whplot = k, mycol = mycol,
+                                     intvar = intvar, adj.var = adj.var, psel = psel2,
+                                     toplot = TRUE, pathwaylevel = FALSE, ...)
+            if(!is.null(hm_obj) && inherits(hm_obj, c("ggplot", "gg", "grob", "trellis"))) print(hm_obj)
+          }, error = function(e) message("heatmaprgsa_hm failed for '", k, "': ", conditionMessage(e)))
           dev.off()
         }
         if (ploteffsize) {
