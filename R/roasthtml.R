@@ -344,8 +344,9 @@ htmlrgsa2 <- function (obj, htmlpath = "", htmlname = "file.html", plotpath = ""
           png(paste0(htmlpath, plotpath, clean_k, "_heatmap.png"),
               width = sizesHeatmap[2], height = sizesHeatmap[1])
           tryCatch(heatmaprgsa_hm(obj, whplot = k, mycol = mycol,
-                                  intvar = intvar, adj.var = adj.var, psel = psel2, ...),
-                   error = function(e) message("plotStats failed for '", k, "': ", conditionMessage(e)))
+                                  intvar = intvar, adj.var = adj.var, psel = psel2,
+                                  toplot = TRUE, pathwaylevel = FALSE, ...),
+                   error = function(e) message("heatmaprgsa_hm failed for '", k, "': ", conditionMessage(e)))
           dev.off()
         }
         if (ploteffsize) {
