@@ -118,19 +118,13 @@ roastHtmlTable <- function(mygs, gs, i, filename, out_dirname, indhtml, DEdir = 
 
   # select significant gene sets (handling NAs)
   sel <- which(mygs$res$adj.pval < apval.cut)
-  if (length(sel) < 10) {
-    mmax <- min(10, nrow(mygs$res))
+
+  if (length(sel) < maxgs) {
+    mmax <- min(maxgs, nrow(mygs$res))
     sel <- seq_len(mmax)
   }
 
   mygs$res <- mygs$res[sel, , drop = FALSE]
-
-  # Trim to maxgs
-  if (nrow(mygs$res) > 0) {
-    mygs$res <- mygs$res[seq_len(min(nrow(mygs$res), maxgs)), , drop = FALSE]
-  }
-
-  # Align gene set indices
   mygs$index <- mygs$index[rownames(mygs$res)]
 
   if (verbose) {
